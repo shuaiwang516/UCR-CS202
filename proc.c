@@ -559,8 +559,17 @@ info(int param)
       return curproc->syscallCounter;
       break;
     case 3:
-    
-      return -1;
+	  acquire(&ptable.lock);
+	  uint i;
+	  // loop through the page table of the current process
+	  for (i = 0; i < curproc->sz; i += PGSIZE) {
+	  	// increment the counter if the present bit is set
+	  	if ((*(curproc->pgdir + i)) & PTE_P) {
+			numCounter++;
+		}
+	  }
+	  release(&ptable.lock);
+      return numCounter;
       break;
     default:
       cprintf("ERROR: param must be 1/2/3 in info\n");
