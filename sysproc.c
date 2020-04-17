@@ -7,6 +7,17 @@
 #include "mmu.h"
 #include "proc.h"
 
+//-----cs202------//
+int
+sys_info(void)
+{
+  int param;
+  if(argint(0,&param) < 0)
+    return -1;
+  return info(param);
+}
+
+
 int
 sys_fork(void)
 {

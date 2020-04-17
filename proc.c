@@ -515,7 +515,7 @@ procdump(void)
   struct proc *p;
   char *state;
   uint pc[10];
-
+   
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == UNUSED)
       continue;
@@ -531,4 +531,56 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+//-----cs202---------//
+int
+info(int param)
+{
+  struct proc *p;
+  struct proc *curproc = myproc();
+  int numCounter = 0;
+  
+  if(param == 1){
+    acquire(&ptable.lock);
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state == UNUSED)
+        continue;
+      numCounter++;
+    }
+    release(&ptable.lock);
+    //cprintf("We have %d processes in this system\n", numCounter);
+    return numCounter;
+  }
+
+  else if(param == 2){
+    //cprintf("This process has made %d system calls\n",curproc->syscallCounter);
+    return curproc->syscallCounter;
+  }
+
+ /* switch(param){
+    case 1:
+      acquire(&ptable.lock);
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->state == UNUSED)
+          continue;
+        numCounter++;
+      }
+      release(&ptable.lock);
+      cprintf("We have %d processes in this system\n", numCounter);
+      return numCounter;
+      break;
+    case 2:
+      cprintf("This process has made %d system calls\n",curproc->syscallCounter);
+      return curproc->syscallCounter;
+      break;
+    case 3:
+    
+      return -1;
+      break;
+    default:
+      cprintf("ERROR: param must be 1/2/3 in info\n");
+      return -1;
+  }*/
+  return -1;
 }
