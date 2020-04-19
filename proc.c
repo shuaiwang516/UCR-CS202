@@ -540,13 +540,13 @@ info(int param)
   struct proc *p;
   struct proc *curproc = myproc();
   int numCounter = 0;
- 
+  uint i;
 
   switch(param){
     case 1:
       acquire(&ptable.lock);
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-        if(p->state == UNUSED)
+        if(p->state == UNUSED || p->state == ZOMBIE)
           continue;
         numCounter++;
       }
@@ -558,17 +558,14 @@ info(int param)
      // cprintf("This process has made %d system calls\n",curproc->syscallCounter);
       return curproc->syscallCounter;
       break;
-    case 3:
-	  acquire(&ptable.lock);
-	  uint i;
-	  // loop through the page table of the current process
-	  for (i = 0; i < curproc->sz; i += PGSIZE) {
-	  	// increment the counter if the present bit is set
-	  	if ((*walkpgdir(curproc->pgdir, (void *)i, 0)) & PTE_P) {
-			numCounter++;
-		}
-	  }
-	  release(&ptable.lock);
+    case 3: 
+      // loop through the page table of the current process
+      for (i = 0; i < curproc->sz; i += PGSIZE) {
+        // increment the counter if the present bit is set
+        if ((*walkpgdir(curproc->pgdir, (void *)i, 0)) & PTE_P) {
+          numCounter++;
+        }
+      }
       return numCounter;
       break;
     default:
