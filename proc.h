@@ -55,6 +55,8 @@ struct proc {
   int pageCounter;             // Count the number of memory pages this process is using
 };
 
+pte_t *
+walkpgdir(pde_t *pgdir, const void *va, int alloc);
 // Process memory is laid out contiguously, low addresses first:
 //   text
 //   original data and bss

@@ -564,7 +564,7 @@ info(int param)
 	  // loop through the page table of the current process
 	  for (i = 0; i < curproc->sz; i += PGSIZE) {
 	  	// increment the counter if the present bit is set
-	  	if ((*(curproc->pgdir + i)) & PTE_P) {
+	  	if ((*walkpgdir(curproc->pgdir, (void *)i, 0)) & PTE_P) {
 			numCounter++;
 		}
 	  }
