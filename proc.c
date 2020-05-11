@@ -414,12 +414,12 @@ scheduler(void)
     
     // Calculate total tickets number
     totalTickets = getTotalTickets();   
-    
+    curTickets = 0;
     // Generate random number
     cmostime(r);
     srand(r->second);
     randomNumber = rand() % totalTickets;
-    while(randomNumber <= 0 && randomNumber > totalTickets)
+    while(randomNumber <= 0 || randomNumber > totalTickets)
       randomNumber = rand() % totalTickets;
    
     // Loop over process table looking for process to run.
