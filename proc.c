@@ -7,6 +7,11 @@
 #include "proc.h"
 #include "spinlock.h"
 
+//------------cs202------------//
+// Head file of the random function
+#include "date.h"
+#include "rand.h"
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -88,6 +93,10 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  
+  //-------------cs202------------//
+  //All processes' initial tickets are 10.
+  p->tickets = 10;
 
   release(&ptable.lock);
 
@@ -111,7 +120,7 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-
+  
   return p;
 }
 
@@ -138,6 +147,7 @@ userinit(void)
   p->tf->eflags = FL_IF;
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
+  p->tickets = 10;
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
@@ -199,6 +209,9 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+  //-------------cs202---------------//
+  //Tickets are inherited by children process.
+  np->tickets = curproc->tickets;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -311,6 +324,33 @@ wait(void)
   }
 }
 
+//-------------cs202--------------//
+// Set tickest to the current process
+int
+settickets(int number)
+{
+  struct proc *curproc = myproc();
+  if(number > 0 && number < 10000){
+    curproc->tickets = number;
+    return number;
+  }
+  return -1;
+}
+
+int 
+getTotalTickets(void)
+{
+  struct proc *p;
+  int totalTickets = 0;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != RUNNABLE)
+      continue;
+    totalTickets += p->tickets;
+  }
+  return totalTickets;
+}
+
+
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -324,8 +364,18 @@ scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
+  //----------------cs202---------------//
+  struct rtcdate *r = 0;  // current time -> use to generate random number
+  int totalTickets = 0;   // total tickets number in the OS
+  int curTickets = 0;     // current tickets that we have passed
+  int randomNumber = 0;   // random number -> decide which process to execute
   c->proc = 0;
   
+  cmostime(r);
+  srand(r->second);
+  randomNumber = rand() % totalTickets; 
+  cprintf("number = %d",randomNumber);
+/* 
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -353,6 +403,49 @@ scheduler(void)
     release(&ptable.lock);
 
   }
+*/
+
+
+  //--------------cs202--------------------//
+  //lottery scheduler
+  for(;;){
+    // Enable interrupts on this processor.
+    sti();
+    
+    // Calculate total tickets number
+    totalTickets = getTotalTickets();   
+    
+    // Generate random number
+    cmostime(r);
+    srand(r->second);
+    randomNumber = rand() % totalTickets;
+    while(randomNumber <= 0 && randomNumber > totalTickets)
+      randomNumber = rand() % totalTickets;
+   
+    // Loop over process table looking for process to run.
+    acquire(&ptable.lock);
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state != RUNNABLE)
+        continue;
+      curTickets += p->tickets;
+      if(curTickets < randomNumber)
+        continue;
+      c->proc = p;
+      switchuvm(p);
+      p->state = RUNNING;
+
+      swtch(&(c->scheduler), p->context);
+      switchkvm();
+
+      // Process is done running for now.
+      // It should have changed its p->state before coming back.
+      c->proc = 0;
+      break;
+    }
+    release(&ptable.lock);
+  }
+
+
 }
 
 // Enter scheduler.  Must hold only ptable.lock
@@ -532,3 +625,4 @@ procdump(void)
     cprintf("\n");
   }
 }
+

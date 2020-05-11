@@ -7,6 +7,16 @@
 #include "mmu.h"
 #include "proc.h"
 
+//------------cs202---------------//
+int
+sys_settickets(void)
+{
+  int numTickets;
+  if(argint(0, &numTickets) < 0)
+    return -1;
+  return settickets(numTickets);
+}
+
 int
 sys_fork(void)
 {
