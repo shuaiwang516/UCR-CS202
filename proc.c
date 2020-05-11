@@ -96,7 +96,7 @@ found:
   
   //-------------cs202------------//
   //All processes' initial tickets are 10.
-  p->tickets = 10;
+ // p->tickets = 10;
 
   release(&ptable.lock);
 
@@ -120,7 +120,7 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-  
+ 
   return p;
 }
 
@@ -342,11 +342,13 @@ getTotalTickets(void)
 {
   struct proc *p;
   int totalTickets = 0;
+  acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state != RUNNABLE)
       continue;
     totalTickets += p->tickets;
   }
+  release(&ptable.lock);
   return totalTickets;
 }
 
@@ -444,7 +446,6 @@ scheduler(void)
     }
     release(&ptable.lock);
   }
-
 
 }
 
