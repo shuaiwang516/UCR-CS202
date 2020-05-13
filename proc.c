@@ -442,15 +442,16 @@ scheduler(void)
         target = p;
     }
 
-    if (target == 0) continue;
-
-
-    c->proc = p;
-    stride = LARGE / p->tickets;
-    p->pass += stride;
-    switchuvm(p);
-    p->state = RUNNING;
-    swtch(&(c->scheduler), p->context);
+	if (target == 0) {
+		release(&ptable.lock);
+		continue;
+	}
+    c->proc = target;
+    stride = LARGE / target->tickets;
+    target->pass += stride;
+    switchuvm(target);
+    target->state = RUNNING;
+    swtch(&(c->scheduler), target->context);
     switchkvm();
     c->proc = 0;
     release(&ptable.lock);
