@@ -369,7 +369,8 @@ scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
-  //----------------cs202---------------//
+  int ticks = 0;
+  
   #ifdef LOTTERY
   int totalTickets = 0;   // total tickets number in the OS
   int curTickets = 0;     // current tickets that we have passed
@@ -378,7 +379,7 @@ scheduler(void)
   c->proc = 0;
   
   cprintf("in lottery!\n"); 
-  //--------------cs202--------------------//
+
   //lottery scheduler
   for(;;){
     // Enable interrupts on this processor.
@@ -411,6 +412,7 @@ scheduler(void)
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
+      cprintf("total ticks = %d, now CPU is running %d process.\n",++ticks, p->pid);      
 
       swtch(&(c->scheduler), p->context);
       switchkvm();
@@ -442,15 +444,16 @@ scheduler(void)
         target = p;
     }
 
-	if (target == 0) {
-		release(&ptable.lock);
-		continue;
-	}
+    if (target == 0) {
+      release(&ptable.lock);
+      continue;
+    }
     c->proc = target;
     stride = LARGE / target->tickets;
     target->pass += stride;
     switchuvm(target);
     target->state = RUNNING;
+    cprintf("total ticks = %d, now CPU is running %d process.\n",++ticks, target->pid);
     swtch(&(c->scheduler), target->context);
     switchkvm();
     c->proc = 0;

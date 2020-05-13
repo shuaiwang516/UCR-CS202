@@ -3,6 +3,8 @@
 #include "user.h"
 int main(int argc, char *argv[])
 {
+  int pid = getpid();
+  printf(1,"test1 pid = %d\n", pid);
   settickets(300); // write your own function here
   int i,k;
   const int loop=43000;
