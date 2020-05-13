@@ -377,6 +377,7 @@ scheduler(void)
   int seed = 0;
   c->proc = 0;
   
+  cprintf("in lottery!\n"); 
   //--------------cs202--------------------//
   //lottery scheduler
   for(;;){
@@ -425,11 +426,40 @@ scheduler(void)
   #endif
 
   #ifdef STRIDE
-  strideScheduler(p, c);
+  struct proc* target;
+  int stride;
+  cprintf("in stride!!\n");
+  for (;;) {
+    sti();
+   
+    acquire(&ptable.lock);
+    target = 0;
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+      if (p->state != RUNNABLE)
+        continue;
+
+      if (target == 0 || p->pass < target->pass)
+        target = p;
+    }
+
+    if (target == 0) continue;
+
+
+    c->proc = p;
+    stride = LARGE / p->tickets;
+    p->pass += stride;
+    switchuvm(p);
+    p->state = RUNNING;
+    swtch(&(c->scheduler), p->context);
+    switchkvm();
+    c->proc = 0;
+    release(&ptable.lock);
+  }
   #endif
 
 }
 
+/*
 void strideScheduler(struct proc* p, struct cpu* c) {
   struct proc* target;
   int stride;
@@ -467,7 +497,7 @@ void strideScheduler(struct proc* p, struct cpu* c) {
     release(&ptable.lock);
   }
 
-}
+}*/
 
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
