@@ -1,2 +1,2 @@
-extern void srand(unsigned int);
-extern int rand(void);
+//extern void srand(unsigned int);
+extern int rand(int);

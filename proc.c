@@ -367,16 +367,17 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   //----------------cs202---------------//
-  struct rtcdate *r = 0;  // current time -> use to generate random number
+  //struct rtcdate *r = 0;  // current time -> use to generate random number
   int totalTickets = 0;   // total tickets number in the OS
   int curTickets = 0;     // current tickets that we have passed
   int randomNumber = 0;   // random number -> decide which process to execute
+  int seed = 0;
   c->proc = 0;
-  
-  cmostime(r);
-  srand(r->second);
-  randomNumber = rand() % totalTickets; 
-  cprintf("number = %d",randomNumber);
+   
+  //cmostime(r);
+  //srand(r->second);
+  //randomNumber = rand(r->second) % totalTickets; 
+  //cprintf("number = %d",randomNumber);
 /* 
   for(;;){
     // Enable interrupts on this processor.
@@ -417,13 +418,19 @@ scheduler(void)
     // Calculate total tickets number
     totalTickets = getTotalTickets();   
     curTickets = 0;
+    randomNumber = 0;
     // Generate random number
-    cmostime(r);
-    srand(r->second);
-    randomNumber = rand() % totalTickets;
-    while(randomNumber <= 0 || randomNumber > totalTickets)
-      randomNumber = rand() % totalTickets;
-   
+   // cmostime(r);
+    //srand(r->second);
+    if(totalTickets > 0){
+      while(randomNumber <= 0 || randomNumber > totalTickets + 1){
+        seed += 1;
+        randomNumber = rand(seed) % totalTickets;
+      }
+    }else{
+      randomNumber = 0;
+    }
+    //cprintf("random = %d\n",randomNumber);
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -444,6 +451,7 @@ scheduler(void)
       c->proc = 0;
       break;
     }
+   // cprintf("randomNumber2 = %d\n",randomNumber);
     release(&ptable.lock);
   }
 
