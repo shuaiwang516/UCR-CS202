@@ -20,6 +20,7 @@ struct {
 static struct proc *initproc;
 
 int nextpid = 1;
+int LARGE = 100000; // a large variable for stride scheduler
 extern void forkret(void);
 extern void trapret(void);
 
@@ -148,6 +149,7 @@ userinit(void)
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
   p->tickets = 10;
+  p->pass = 0; // stride scheduler
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
@@ -212,6 +214,7 @@ fork(void)
   //-------------cs202---------------//
   //Tickets are inherited by children process.
   np->tickets = curproc->tickets;
+  np->pass = 0;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -367,48 +370,13 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   //----------------cs202---------------//
-  //struct rtcdate *r = 0;  // current time -> use to generate random number
+  #ifdef LOTTERY
   int totalTickets = 0;   // total tickets number in the OS
   int curTickets = 0;     // current tickets that we have passed
   int randomNumber = 0;   // random number -> decide which process to execute
   int seed = 0;
   c->proc = 0;
-   
-  //cmostime(r);
-  //srand(r->second);
-  //randomNumber = rand(r->second) % totalTickets; 
-  //cprintf("number = %d",randomNumber);
-/* 
-  for(;;){
-    // Enable interrupts on this processor.
-    sti();
-
-    // Loop over process table looking for process to run.
-    acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
-
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
-
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
-    }
-    release(&ptable.lock);
-
-  }
-*/
-
-
+  
   //--------------cs202--------------------//
   //lottery scheduler
   for(;;){
@@ -452,6 +420,50 @@ scheduler(void)
       break;
     }
    // cprintf("randomNumber2 = %d\n",randomNumber);
+    release(&ptable.lock);
+  }
+  #endif
+
+  #ifdef STRIDE
+  strideScheduler(p, c);
+  #endif
+
+}
+
+void strideScheduler(struct proc* p, struct cpu* c) {
+  struct proc* target;
+  int stride;
+
+  for (;;) {
+	// Enable interrupts on this processor.
+	sti();
+	
+	// Fetch the process with the minimum pass
+	acquire(&ptable.lock);
+	target = 0;
+	for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+	  if (p->state != RUNNABLE)
+	    continue;
+
+	  if (target == 0 || p->pass < target->pass) 
+	  	target = p;
+	}
+	
+	// switch to the target process
+	if (target == 0) continue; // no process is RUNNABLE
+
+	c->proc = p;
+	stride = LARGE / p->tickets;
+	p->pass += stride;
+	switchuvm(p);
+	p->state = RUNNING;
+	swtch(&(c->scheduler), p->context);
+	switchkvm();
+
+	// Process is done running for now
+	// It should have changed its p->state before coming back
+	c->proc = 0;
+
     release(&ptable.lock);
   }
 
