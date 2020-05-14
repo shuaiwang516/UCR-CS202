@@ -5,6 +5,5 @@
 
 int rand(int seed){
 	seed = seed * 1103515245 + 12345;
-        //total max lottery would between 0 to 10000
         return((unsigned)(seed/65536) % 10000);
 }
