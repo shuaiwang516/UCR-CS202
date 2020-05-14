@@ -412,7 +412,7 @@ scheduler(void)
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
-      cprintf("total ticks = %d, now CPU is running %d process.\n",++ticks, p->pid);      
+      cprintf("%d %d\n",++ticks, p->pid);      
 
       swtch(&(c->scheduler), p->context);
       switchkvm();
@@ -428,6 +428,7 @@ scheduler(void)
   #endif
 
   #ifdef STRIDE
+  // record the process with the minimum pass 
   struct proc* target;
   int stride;
   cprintf("in stride!!\n");
@@ -453,7 +454,7 @@ scheduler(void)
     target->pass += stride;
     switchuvm(target);
     target->state = RUNNING;
-    cprintf("total ticks = %d, now CPU is running %d process.\n",++ticks, target->pid);
+    cprintf("%d %d\n",++ticks, target->pid);
     swtch(&(c->scheduler), target->context);
     switchkvm();
     c->proc = 0;
