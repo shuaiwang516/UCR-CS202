@@ -389,9 +389,7 @@ scheduler(void)
     totalTickets = getTotalTickets();   
     curTickets = 0;
     randomNumber = 0;
-    // Generate random number
-   // cmostime(r);
-    //srand(r->second);
+
     if(totalTickets > 0){
       while(randomNumber <= 0 || randomNumber > totalTickets + 1){
         seed += 1;
