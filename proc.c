@@ -97,7 +97,7 @@ found:
   
   //-------------cs202------------//
   //All processes' initial tickets are 10.
- // p->tickets = 10;
+  p->tickets = 10;
 
   release(&ptable.lock);
 
