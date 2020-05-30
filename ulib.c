@@ -3,6 +3,58 @@
 #include "fcntl.h"
 #include "user.h"
 #include "x86.h"
+#include "param.h"
+#include "syscall.h"
+#include "traps.h"
+#include "fs.h"
+#define PGSIZE 4096 
+//----cs202------//
+
+int
+lock_init(lock_t *lk)
+{
+  lk->flag = 0;
+  return 0;
+}
+
+void
+lock_acquire(lock_t *lk)
+{
+  while(xchg(&lk->flag,1) !=0);
+}
+
+void
+lock_release(lock_t *lk)
+{
+  xchg(&lk->flag,0);
+}
+
+int
+thread_create(void* (*start_routine)(void*), void *arg)
+{
+  lock_t lk;
+  int tid;
+  void* stack;
+ 
+  lock_init(&lk);
+  lock_acquire(&lk);
+  //void* stack = malloc(4096);
+  lock_release(&lk);
+
+  if((uint)stack % 4096 != 0){
+    stack += 4096 - ((uint)stack % 4096);
+  } 
+
+  tid = clone(stack, 4096 * 2);
+ 
+  if(tid == 0){
+    (*start_routine)(arg);
+    exit();
+  }  
+  return tid;
+}
+
+//****************//
 
 char*
 strcpy(char *s, const char *t)

@@ -14,6 +14,9 @@ struct {
 
 static struct proc *initproc;
 
+//----------cs202-------------//
+int threadCounter[NPROC];
+
 int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
@@ -75,10 +78,13 @@ allocproc(void)
 {
   struct proc *p;
   char *sp;
+  int i;
 
   acquire(&ptable.lock);
 
+  i = 0;
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    i++;
     if(p->state == UNUSED)
       goto found;
 
@@ -89,6 +95,9 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
 
+  //--------cs202-----------//
+  p->shareIndex = i;
+  
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -221,6 +230,65 @@ fork(void)
   return pid;
 }
 
+
+int clone(void *stack, int size){
+  int i, pid;
+  struct proc *nthread;
+  struct proc *curproc = myproc();
+
+  if(stack || ((uint)stack % PGSIZE != 0) || ((curproc->sz - (uint)stack) < PGSIZE))
+    return -1;
+  
+  if((nthread = allocproc()) == 0)
+    return -1;
+
+  //record the number of threads who share the same address with parent process.
+  nthread->shareIndex = curproc->shareIndex;
+  threadCounter[nthread->shareIndex]++; 
+  cprintf("fot test: threadCounter = %d\n", threadCounter[nthread->shareIndex]);
+ 
+  nthread->pgdir = curproc->pgdir; 
+  nthread->sz = curproc->sz;
+  nthread->parent = curproc;
+  *nthread->tf = *curproc->tf;
+ 
+  //set stack register ?????????? not sure ---------------------------------------//
+/*  nthread->tf->esp = (uint)stack + size;   //grow top to down
+  nthread->tf->ebp = nthread->tf->esp;
+  nthread->tstack = stack; */
+ 
+
+  void *bottomPointer = (void*)curproc->tf->ebp + 16;
+  void *stackPointer = (void*)curproc->tf->esp;
+  uint stackSize = (uint) (bottomPointer - stackPointer);
+  cprintf("esp = %d, ebp = %d\n",stackPointer, bottomPointer);    
+  
+  nthread->tf->esp = (uint)(stack - stackSize);
+  nthread->tf->ebp = (uint)(stack - 16);
+  cprintf("esp = %d, ebp = %d\n",nthread->tf->esp, nthread->tf->ebp);
+
+  memmove(stack - stackSize, stackPointer, stackSize);
+ 
+  //thread will return 0 in the child
+  nthread->tf->eax = 0;
+
+  //share the same file discription
+  for(i = 0; i < NOFILE; i++){
+    if(curproc->ofile[i])
+      nthread->ofile[i] = curproc->ofile[i];
+  }  
+  nthread->cwd = curproc->cwd;  
+  pid = nthread->pid;
+
+  acquire(&ptable.lock);
+  nthread->state = RUNNABLE;
+  release(&ptable.lock);
+
+  safestrcpy(nthread->name, curproc->name, sizeof(curproc->name)); 
+  return pid;
+}
+
+
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
@@ -230,22 +298,30 @@ exit(void)
   struct proc *curproc = myproc();
   struct proc *p;
   int fd;
-
+ 
+  
   if(curproc == initproc)
     panic("init exiting");
 
-  // Close all open files.
-  for(fd = 0; fd < NOFILE; fd++){
-    if(curproc->ofile[fd]){
-      fileclose(curproc->ofile[fd]);
-      curproc->ofile[fd] = 0;
+  // Close all open files if there is no other threads point to the same address.
+  if(threadCounter[curproc->shareIndex] == 0){
+    for(fd = 0; fd < NOFILE; fd++){
+      if(curproc->ofile[fd]){
+        fileclose(curproc->ofile[fd]);
+        curproc->ofile[fd] = 0;
+      }
     }
+
+    begin_op();
+    iput(curproc->cwd);
+    end_op();
+    curproc->cwd = 0;
   }
 
-  begin_op();
-  iput(curproc->cwd);
-  end_op();
-  curproc->cwd = 0;
+
+  if(threadCounter[curproc->shareIndex] > 0){
+    threadCounter[curproc->shareIndex]--;
+  }
 
   acquire(&ptable.lock);
 
@@ -284,6 +360,22 @@ wait(void)
       if(p->parent != curproc)
         continue;
       havekids = 1;
+
+      //If a thread exits then reap its resources
+      if(p->pgdir == curproc->pgdir && p->pid != 0 && p->state == ZOMBIE){
+        pid = p->pid;
+        //reap the thread stack resources.
+        kfree(p->tstack);
+        p->tstack = 0;
+        
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->state = UNUSED;
+        release(&ptable.lock);
+        return pid;       
+      }
+
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
