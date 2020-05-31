@@ -1,59 +1,75 @@
 #include "types.h"
 #include "stat.h"
 #include "user.h"
-#include "fs.h"
 #include "thread.h"
+#define DEBUG 0
+struct lock_t *lock;
+static int output =0;
+static int numofthread;
+static int passnum;
+static int workpid=0;
 
-typedef struct arg_struct
+void* worker();
+int main ( int argc , char * argv [])
 {
-  int *number_of_passes;
-  struct lock_t *lk;
-} fris_struct;
+	numofthread =atoi(argv[1]);
+	passnum = atoi(argv[2]);
+	int i = 0 ;
+	lock_init(lock);
+	for(i=0;i<numofthread;i++)
+	{
+		thread_create(worker,(void *)i);
+	}
+	for(i=0;i<numofthread;i++)
+	{
+		wait();
+        //        printf(1,"wait = %d\n",i);
+	}
+        //printf(1,"wait finish\n");
+	exit();
+#if DEBUG
+	if(pid >0)
+		printf(1,"parent's pid num is %d\n",getpid());
+	if(pid ==0)
+		printf(1,"child's pid num is %d\n",getpid());
+#endif
 
-void *pass_frisbee(void *arg)
-{
-  fris_struct *n_arg = (fris_struct *) arg;
 
-  int i;
-  for(i = 0; i < *n_arg->number_of_passes; i++)
-  {
-    lock_acquire(n_arg->lk);
-    printf(2, "Fly!\n");
-    lock_release(n_arg->lk);
-  }
+#if DEBUD
+	printf(1,"lock_test = %d\n",lock->locked);
+#endif 
 
-  return 0;
 }
-
-int
-main(int argc, char *argv[])
+void* worker(void *arg)
 {
-  if(argc != 3)
-  {
-    printf(2, "usage: frisbee <numberofthreads> <numberofpasses>\n");
-    exit();
-  }
-
-  int number_of_threads = atoi(argv[1]);
-  int number_of_passes = atoi(argv[2]);
-
-  struct lock_t lk;
-  lock_init(&lk);
-
-  fris_struct arg;
-  arg.number_of_passes = &number_of_passes;
-  arg.lk = &lk;
-
-  void *args = (void *) &arg;
-  int i;
-  for(i = 0; i < number_of_threads; i++)
-  {
-    thread_create(pass_frisbee, args);
-  }
-
-  for(i = 0; i < number_of_threads; i++)
-  {
-    thread_join();
-  }
-  exit();
+	int pidnum = (int)arg;
+#if DEBUG
+	printf(1,"child's pid num is %d\n",pidnum);
+#endif
+	while(output<passnum)
+	{
+		lock_acquire(lock);
+		if(output==passnum)
+			break;
+		if(pidnum==workpid)
+		{
+			output++;
+			printf(1,"pass number no:%d is thread %d is passing the token to ",output,pidnum);
+			workpid++;
+			if(workpid ==  numofthread)// because thread num is start from 0 
+				workpid = 0 ;	
+			printf(1," %d\n",workpid);
+			lock_release(lock);
+		 	sleep(1);
+		}
+		else
+		{
+			lock_release(lock);
+			sleep(1);
+		}
+	}
+	
+	//printf(1,"time to end\n");
+	exit();
+	
 }

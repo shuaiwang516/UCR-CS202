@@ -1,10 +1,6 @@
 struct stat;
 struct rtcdate;
-
-//------cs202---------//
-typedef struct __lock_t{
-  uint flag;
-}lock_t;
+struct lock_t;
 
 // system calls
 int fork(void);
@@ -45,9 +41,10 @@ void* malloc(uint);
 void free(void*);
 int atoi(const char*);
 
+
 //-------cs202-----------//
 int thread_create(void *(*start_routine)(void*), void *arg);
-int lock_init(lock_t *lk);
-void lock_acquire(lock_t *lk);
-void lock_release(lock_t *lk);
+int lock_init(struct lock_t *lk);
+void lock_acquire(struct lock_t *lk);
+void lock_release(struct lock_t *lk);
 

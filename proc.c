@@ -26,7 +26,12 @@ static void wakeup1(void *chan);
 void
 pinit(void)
 {
+  int i;
   initlock(&ptable.lock, "ptable");
+  for(i = 0; i < NPROC; i++){
+    threadCounter[i] = 0;
+  }
+  //cprintf("init array finish \n");
 }
 
 // Must be called with interrupts disabled
@@ -83,10 +88,11 @@ allocproc(void)
   acquire(&ptable.lock);
 
   i = 0;
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     i++;
     if(p->state == UNUSED)
       goto found;
+  }
 
   release(&ptable.lock);
   return 0;
@@ -160,6 +166,7 @@ userinit(void)
   p->state = RUNNABLE;
 
   release(&ptable.lock);
+  //cprintf("user init finish\n");
 }
 
 // Grow current process's memory by n bytes.
@@ -236,8 +243,10 @@ int clone(void *stack, int size){
   struct proc *nthread;
   struct proc *curproc = myproc();
 
-  if(stack || ((uint)stack % PGSIZE != 0) || ((curproc->sz - (uint)stack) < PGSIZE))
+  if(!stack || ((uint)stack % PGSIZE != 0) || ((curproc->sz - (uint)stack) < PGSIZE)){
     return -1;
+  }  
+
   
   if((nthread = allocproc()) == 0)
     return -1;
@@ -245,7 +254,7 @@ int clone(void *stack, int size){
   //record the number of threads who share the same address with parent process.
   nthread->shareIndex = curproc->shareIndex;
   threadCounter[nthread->shareIndex]++; 
-  cprintf("fot test: threadCounter = %d\n", threadCounter[nthread->shareIndex]);
+  //cprintf("fot test: threadCounter = %d\n", threadCounter[nthread->shareIndex]);
  
   nthread->pgdir = curproc->pgdir; 
   nthread->sz = curproc->sz;
@@ -261,11 +270,11 @@ int clone(void *stack, int size){
   void *bottomPointer = (void*)curproc->tf->ebp + 16;
   void *stackPointer = (void*)curproc->tf->esp;
   uint stackSize = (uint) (bottomPointer - stackPointer);
-  cprintf("esp = %d, ebp = %d\n",stackPointer, bottomPointer);    
+  //cprintf("esp = %d, ebp = %d\n",stackPointer, bottomPointer);    
   
   nthread->tf->esp = (uint)(stack - stackSize);
   nthread->tf->ebp = (uint)(stack - 16);
-  cprintf("esp = %d, ebp = %d\n",nthread->tf->esp, nthread->tf->ebp);
+  //cprintf("esp = %d, ebp = %d\n",nthread->tf->esp, nthread->tf->ebp);
 
   memmove(stack - stackSize, stackPointer, stackSize);
  
@@ -316,7 +325,7 @@ exit(void)
     iput(curproc->cwd);
     end_op();
     curproc->cwd = 0;
-  }
+ }
 
 
   if(threadCounter[curproc->shareIndex] > 0){
@@ -365,7 +374,7 @@ wait(void)
       if(p->pgdir == curproc->pgdir && p->pid != 0 && p->state == ZOMBIE){
         pid = p->pid;
         //reap the thread stack resources.
-        kfree(p->tstack);
+       // kfree(p->tstack);
         p->tstack = 0;
         
         p->pid = 0;
@@ -374,7 +383,7 @@ wait(void)
         p->state = UNUSED;
         release(&ptable.lock);
         return pid;       
-      }
+      } 
 
       if(p->state == ZOMBIE){
         // Found one.
