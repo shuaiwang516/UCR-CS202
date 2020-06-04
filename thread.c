@@ -30,21 +30,16 @@ lock_release(struct lock_t *lk)
 int
 thread_create(void* (*start_routine)(void*), void *arg)
 {
-//  lock_t lk;
   int tid;
   void* stack;
 
-//  lock_init(&lk);
-//  lock_acquire(&lk);
   stack = malloc(PGSIZE * 2);
-//  lock_release(&lk);
 
   if((uint)stack % PGSIZE != 0){
     stack += PGSIZE - ((uint)stack % PGSIZE);
   }
 
   tid = clone(stack,PGSIZE);
-  //printf(1,"tid = %d\n",tid);
   if(tid == 0){
     (*start_routine)(arg);
     exit();
