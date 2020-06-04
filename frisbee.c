@@ -44,6 +44,6 @@ int main(int argc, char* argv[]){
     for(i = 0; i < threadNumber; i++){
         wait();
     }
-
+    printf(1, "\nSimulation of Frisbee game has finished, %d rounds were played in total!\n", totalNumber);
     exit();
 }
