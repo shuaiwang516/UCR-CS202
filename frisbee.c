@@ -26,6 +26,7 @@ void* threadFunction(void* arg){
 int main(int argc, char* argv[]){
     if(argc != 3){
         printf(1, "Frisbee needs 2 extra elements!!\n");
+        exit();
     }
     int i = 0;
     threadNumber = atoi(argv[1]);
